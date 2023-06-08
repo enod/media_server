@@ -1,0 +1,12 @@
+{
+    email enod2008@gmail.com
+}
+
+media-request.ddns.net {
+    tls {
+        issuer acme {
+            disable_http_challenge
+        }
+    }
+    reverse_proxy overseerr:5055
+}
