@@ -12,14 +12,13 @@ services:
       - VERSION=docker
       - PLEX_CLAIM=claim-wZYD-PA_M_3FEpjfUbAE
       - NVIDIA_VISIBLE_DEVICES=all
+    ports:
+      - 32400:32400
     volumes:
       - ./plex/plex:/config
       - /mnt/media/media/tv:/tv
       - /mnt/media/media/movies:/movies
     restart: unless-stopped
-    network_mode: service:expressvpn
-    depends_on:
-      - expressvpn
 
   expressvpn:
     image: polkaned/expressvpn
@@ -31,7 +30,6 @@ services:
       - 6881:6881/udp
       - 8080:8080
       - "${NZBGET_PORT}:6789"
-      - 32400:32400
     environment:
       - ACTIVATION_CODE=EJDXCHJMRPAF7KMPFXSICRH # Activation Code from ExpressVPN https://www.expressvpn.com/support/troubleshooting/find-activation-code/
     cap_add:
