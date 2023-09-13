@@ -1,25 +1,6 @@
 ---
 version: "3"
 services:
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    runtime: nvidia
-    container_name: plex
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Australia/ACT
-      - VERSION=docker
-      - PLEX_CLAIM=claim-wZYD-PA_M_3FEpjfUbAE
-      - NVIDIA_VISIBLE_DEVICES=all
-    ports:
-      - 32400:32400
-    volumes:
-      - ./plex/plex:/config
-      - /mnt/media/media/tv:/tv
-      - /mnt/media/media/movies:/movies
-    restart: unless-stopped
-
   expressvpn:
     image: polkaned/expressvpn
     container_name: expressvpn
@@ -29,7 +10,7 @@ services:
       - 6881:6881
       - 6881:6881/udp
       - 8080:8080
-      - "${NZBGET_PORT}:6789"
+      - 6789:6789
     environment:
       - ACTIVATION_CODE=EJDXCHJMRPAF7KMPFXSICRH # Activation Code from ExpressVPN https://www.expressvpn.com/support/troubleshooting/find-activation-code/
     cap_add:
@@ -41,135 +22,52 @@ services:
     command: /bin/bash
     privileged: true
 
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TIMEZONE}
-      - WEBUI_PORT=8080
-    volumes:
-      - ${DOCKER_DIR}/qbittorrent:/config
-    restart: always
-    network_mode: service:expressvpn
-    depends_on:
-      - expressvpn
-
-  filebot:
-    image: ghostserverd/filebot:4.9.x
-    container_name: filebot
-    restart: always
-    ports:
-      - "${FILEBOT_PORT}:${FILEBOT_PORT}"
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TIMEZONE}
-      - FILEBOT_PORT=${FILEBOT_PORT}
-      - FILEBOT_FORMAT=${FILEBOT_FORMAT}
-      - FILEBOT_FILTER=${FILEBOT_FILTER}
-      - FILEBOT_ACTION=${FILEBOT_ACTION}
-      - FILEBOT_CONFLICT=${FILEBOT_CONFLICT}
-      - FILEBOT_SERIES_DB=${FILEBOT_SERIES_DB}
-      - FILEBOT_ANIME_DB=${FILEBOT_ANIME_DB}
-      - FILEBOT_MOVIE_DB=${FILEBOT_MOVIE_DB}
-      - FILEBOT_MUSIC_DB=${FILEBOT_MUSIC_DB}
-      - OPEN_SUB_USER=${OPEN_SUB_USER}
-      - OPEN_SUB_PASS=${OPEN_SUB_PASS}
-    volumes:
-      - ${DOCKER_DIR}/filebot:/config
-      - ${DOWNLOAD_DIR}:/data
-      - ${DOWNLOAD_DIR}/media:/media
-
   nzbget:
-    image: cr.hotio.dev/hotio/nzbget:release
+    image: lscr.io/linuxserver/nzbget:latest
     container_name: nzbget
     restart: always
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=${TIMEZONE}
-      - NZBGET_WEB_USER=${NZBGET_WEB_USER}
-      - NZBGET_WEB_PASS=${NZBGET_WEB_PASS}
-      - NZBGET_MAIN_DIR=${NZBGET_MAIN_DIR}
-      - NZBGET_SCRIPT_DIR=${NZBGET_SCRIPT_DIR}
-      - FILEBOT_PORT=${FILEBOT_PORT}
-      - SONARR_API_KEY=${SONARR_API_KEY}
-      - SONARR_PORT=${SONARR_PORT}
-      - RADARR_API_KEY=${RADARR_API_KEY}
-      - RADARR_PORT=${RADARR_PORT}
+      - TZ=Australia/Sydney
+      - NZBGET_USER=admin #optional
+      - NZBGET_PASS=admin #optional      
     volumes:
       - ${DOCKER_DIR}/nzbget:/config
       - ${DOWNLOAD_DIR}/usenet:/data/usenet:rw
     network_mode: service:expressvpn
     depends_on:
-      - expressvpn
+      - expressvpn    
 
   sonarr:
     image: cr.hotio.dev/hotio/sonarr:release
     container_name: sonarr
     restart: always
     ports:
-      - "${SONARR_PORT}:8989"
+      - 8989:8989
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=${TIMEZONE}
+      - TZ=Australia/Sydney
     volumes:
       - ${DOCKER_DIR}/sonarr:/config
-      - ${DOWNLOAD_DIR}:/data #- /volume1/Download:/download
+      - ${DOWNLOAD_DIR}/sonarr:/data
+      - ${DOWNLOAD_DIR}/usenet:/data/usenet      
 
   radarr:
     image: cr.hotio.dev/hotio/radarr:release
     container_name: radarr
     restart: always
     ports:
-      - "${RADARR_PORT}:7878"
+      - 7878:7878
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=${TIMEZONE}
+      - TZ=Australia/Sydney
     volumes:
       - ${DOCKER_DIR}/radarr:/config
-      - ${DOWNLOAD_DIR}:/data
-
-  bazarr:
-    image: cr.hotio.dev/hotio/bazarr:release
-    container_name: bazarr
-    restart: always
-    ports:
-      - "${BAZARR_PORT}:6767"
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TIMEZONE}
-    volumes:
-      - ${DOCKER_DIR}/bazarr:/config
-      - ${DOWNLOAD_DIR}/media:/data/media
-
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    command: --cleanup
-    restart: always
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-
-  readarr:
-    container_name: readarr
-    restart: always
-    image: cr.hotio.dev/hotio/readarr:testing
-    ports:
-      - "8787:8787"
-    environment:
-      - UMASK=002
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TIMEZONE}
-    volumes:
-      - ${DOCKER_DIR}/readarr:/config
-      - ${DOWNLOAD_DIR}:/data
+      - ${DOWNLOAD_DIR}/radarr:/data
+      - ${DOWNLOAD_DIR}/usenet:/data/usenet
 
   prowlarr:
     image: cr.hotio.dev/hotio/prowlarr:testing
@@ -178,74 +76,131 @@ services:
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=${TIMEZONE}
+      - TZ=Australia/Sydney
     volumes:
-      - ${DOCKER_DIR}:/config
+      - ${DOCKER_DIR}/prowlarr:/config
     ports:
-      - 9696:9696
+      - 9696:9696 
+      
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Australia/Sydney
+      - VERSION=docker
+      - PLEX_CLAIM=claim-St36LNdkwNvshvnsB2ge
+    ports:
+      - 32400:32400
+    volumes:
+      - ${DOCKER_DIR}/plex:/config
+      - ${DOWNLOAD_DIR}/sonarr:/tv
+      - ${DOWNLOAD_DIR}/radarr:/movies
+      - ${DOWNLOAD_DIR}/lidarr:/music      
+    restart: unless-stopped   
+
+  bazarr:
+    image: ghcr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Australia/Sydney
+    volumes:
+      - ${DOCKER_DIR}/bazarr:/config
+      - ${DOWNLOAD_DIR}/sonarr:/tv
+      - ${DOWNLOAD_DIR}/radarr:/movies
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+    depends_on:
+      - sonarr
+      - radarr
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Australia/Sydney
+    volumes:
+      - ${DOCKER_DIR}/lidarr:/config
+      - ${DOWNLOAD_DIR}/lidarr:/data
+      - ${DOWNLOAD_DIR}/usenet:/data/usenet
+      - ${DOWNLOAD_DIR}/music:/music
+    ports:
+      - 8686:8686
+    restart: unless-stopped
+
+
+  tdarr:
+    image: haveagitgat/tdarr:latest
+    container_name: tdarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Australia/Sydney
+    volumes:
+      - ${DOCKER_DIR}/tdarr:/app/server/config
+      - /mnt/disk1/media_data:/media
+    ports:
+      - 8265:8265
+    restart: unless-stopped  
+    networks:
+      - media_network
+
+    
+  tdarr_node:
+    image: haveagitgat/tdarr_node:latest
+    container_name: tdarr_node
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Australia/Sydney
+      - serverIP=tdarr
+      - serverPort=8266      
+    volumes:
+      - ${DOCKER_DIR}/tdarr_node:/app/server/config
+      - /mnt/disk1/media_data:/media
+    ports:
+      - 8267:8267
+    restart: unless-stopped
+    networks:
+      - media_network
+
+  readarr:
+    image: linuxserver/readarr:0.3.4-develop
+    container_name: readarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Australia/Sydney
+    volumes:
+      - ${DOCKER_DIR}/readarr:/config
+      - ${DOWNLOAD_DIR}/books:/books
+    ports:
+      - 8787:8787
+    restart: unless-stopped
 
   calibre:
-    image: lscr.io/linuxserver/calibre:latest
+    image: aptalca/docker-rdp-calibre:latest
     container_name: calibre
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=${TIMEZONE}
-      - PASSWORD=${CALIBRE_PASSWORD}
+      - TZ=Australia/Sydney
     volumes:
       - ${DOCKER_DIR}/calibre:/config
-      - ${DOWNLOAD_DIR}/media/books:/books
+      - ${DOWNLOAD_DIR}/calibre_library:/books
     ports:
-      - 8008:8080
-      - 8001:8081
-    restart: always
-
-  ombi:
-    image: linuxserver/ombi:4.35.10
-    container_name: ombi
-    ports:
-      - 3579:3579
-
-  tautulli:
-    image: linuxserver/tautulli:2.12.3
-    container_name: tautulli
-    ports:
-      - 8181:8181
-
-  freshrss:
-    image: lscr.io/linuxserver/freshrss:latest
-    container_name: freshrss
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TIMEZONE}
-    volumes:
-      - ${DOCKER_DIR}/freshrss:/config
-    ports:
-      - 8120:80
+      - 8089:8089
+      - 8090:8090
     restart: unless-stopped
 
-  overseerr:
-    image: sctx/overseerr:latest
-    container_name: overseerr
-    environment:
-      - LOG_LEVEL=debug
-      - TZ=${TIMEZONE}
-      - PORT=5055 #optional
-    ports:
-      - 5055:5055
-    volumes:
-      - ${DOCKER_DIR}/overseer:/app/config
-    restart: unless-stopped
+      
 
-  caddy:
-    image: caddy:latest
-    container_name: caddy
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - ${DOWNLOAD_DIR}/caddy_data:/data
-    ports:
-      - 8040:80
-      - 8443:443
-    depends_on:
-      - overseerr
+networks:
+  media_network:
+
